@@ -12,7 +12,7 @@
 
         body {
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
             background-color: #1a1a2e; /* Dark background */
             color: #e0e0e0; /* Light text color */
             display: flex;
@@ -20,6 +20,7 @@
             align-items: center;
             min-height: 100vh;
             cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewport="0 0 100 100" style="fill: %2300ffff; stroke: %2300ffff;"><circle cx="10" cy="10" r="5" /></svg>') 10 10, auto;
+            font-weight: 400; /* Default font weight */
         }
 
         /* App Container */
@@ -31,12 +32,15 @@
             box-shadow: 0 10px 30px rgba(0, 255, 255, 0.2); /* Cyan glow effect */
             padding: 20px;
             text-align: center;
+            position: relative; /* For absolute positioning of sections */
+            overflow: hidden; /* Prevent scrollbars during transitions */
         }
 
         /* Headings */
         h1 {
             color: #00ffff; /* Neon cyan */
             text-shadow: 0 0 10px #00ffff;
+            font-weight: 600; /* Bolder headings */
         }
 
         /* Buttons (General) */
@@ -48,6 +52,8 @@
             margin: 10px;
             border-radius: 10px;
             font-size: 1.1em;
+            font-family: inherit; /* Ensure buttons use the body font stack */
+            font-weight: 600; /* Make button text slightly bolder */
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 0 10px #7f00ff, 0 0 20px #7f00ff inset; /* Glow effect */
@@ -59,12 +65,34 @@
             box-shadow: 0 0 15px #9d00ff, 0 0 30px #9d00ff inset;
         }
 
-        /* Start Screen Specifics */
-        #start-screen {
-            display: flex;
+        /* Start Screen Specifics & Section Transitions */
+        #start-screen, #call-interface {
+            /* display: flex; /* This will be managed by classes now */
             flex-direction: column;
             align-items: center;
+            width: 100%; /* Ensure sections take full width of container */
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            will-change: opacity, transform; /* Performance hint */
         }
+        /* #call-interface specific flex properties if needed when visible - already covered by .section-visible */
+
+        .section-hidden {
+            opacity: 0 !important;
+            transform: scale(0.95) translateY(20px); 
+            pointer-events: none !important; 
+            position: absolute !important; 
+            top: 0; 
+            left: 0; 
+            /* visibility: hidden; /* Alternative to opacity and pointer-events */
+        }
+        .section-visible {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            pointer-events: auto;
+            display: flex !important; 
+            position: relative !important; 
+        }
+
 
         /* Call Interface */
         #script-display {
@@ -119,6 +147,7 @@
             border: 1px solid #00ffff; /* Cyan border */
             background-color: #2c2c54;
             color: #e0e0e0;
+            font-family: inherit; /* Ensure inputs use body font */
         }
         
         /* #export-notes button styling is covered by general button styles for now */
@@ -135,10 +164,7 @@
                 padding: 10px;
             }
 
-            button,
-            #toggle-objections, /* Ensure these also get general mobile button sizing if not overridden */
-            #toggle-notes,
-            #export-notes {
+            button {
                 padding: 12px 20px;
                 font-size: 1em;
             }
@@ -151,31 +177,12 @@
                 font-size: 1.1em;
             }
         }
-
-        /* Styles for Utility Buttons */
-        #toggle-objections,
-        #toggle-notes,
-        #export-notes {
-            background-color: #3a3a5e; /* Less prominent dark blue/purple */
-            padding: 8px 15px; /* Slightly smaller */
-            font-size: 0.9em; /* Slightly smaller font */
-            box-shadow: 0 0 5px #3a3a5e, 0 0 10px #3a3a5e inset; /* More subtle glow */
-            /* transition is already on general button, so it will apply */
-        }
-
-        #toggle-objections:hover,
-        #toggle-notes:hover,
-        #export-notes:hover {
-            background-color: #4a4a6e;
-            box-shadow: 0 0 7px #4a4a6e, 0 0 12px #4a4a6e inset;
-            transform: translateY(-1px); /* Less pronounced hover effect */
-        }
     </style>
 </head>
 <body>
     <div id="app-container">
         <!-- Start Screen Section -->
-        <section id="start-screen">
+        <section id="start-screen" class="section-visible">
             <h1>Welcome to the Call Assistant</h1>
             <button id="btn-cold-call">Cold Call</button>
             <button id="btn-booked-no-time">Booked Lead, No Time</button>
@@ -183,7 +190,7 @@
         </section>
 
         <!-- Call Interface Section (Initially Hidden) -->
-        <section id="call-interface" style="display: none;">
+        <section id="call-interface" class="section-hidden">
             <div id="script-display">
                 <!-- Speech bubble/callout will be dynamically inserted here -->
             </div>
@@ -217,261 +224,286 @@
     <script>
         // Part 1 & 2: Data Structures, UI Element Toggling, Call Flow Engine, Animations, Utilities
 
-        // 1. Script Data Structures & Objection Data (Now with fully transcribed example scripts)
+        // 1. Script Data Structures & Objection Data
         const scripts = {
             coldCall: {
-                name: "RapidMedical Cold Call Script — Full Detail with Branching Responses",
-                initialPromptKey: "coldCall_GK_Intro",
+                name: "RapidMedical Cold Call Script - Cardone Method", // Updated Name
+                initialPromptKey: "coldCall_GK_Opener_New", // Updated Initial Key
                 nodes: {
-                    "coldCall_GK_Intro": {
-                        text: "Hey [Receptionist Name], this is [Your Name] from RapidMedical. Is Dr. [Last Name] available for a quick 45-second call? I’ll be super quick.",
+                    // --- Gatekeeper (GK) Path ---
+                    "coldCall_GK_Opener_New": {
+                        text: "Hey [Gatekeeper Name]! I was trying to reach the owner or Dr. [Last Name] – the person who handles new patient intakes and scheduling. Are they in today?",
                         responses: {
-                            "what_about": { buttonText: "What is this about?", nextNodeKey: "coldCall_GK_WhatAbout" },
-                            "still_blocked": { buttonText: "Dr. Unavailable / Blocked", nextNodeKey: "coldCall_GK_StillBlocked" },
-                            "dr_available": { buttonText: "Dr. is Available / Put Through", nextNodeKey: "coldCall_DOC_Opener" }
+                            "gk_who_is_this": { buttonText: "Who is this? / What's this regarding?", nextNodeKey: "coldCall_GK_IntroduceRapidMedical" },
+                            "gk_they_are_busy": { buttonText: "They're busy / Not available", nextNodeKey: "coldCall_GK_HandleBusy" },
+                            "gk_puts_through": { buttonText: "Puts you through to DM", nextNodeKey: "coldCall_DM_Opener_New" }
                         }
                     },
-                    "coldCall_GK_WhatAbout": {
-                        text: "We’re helping medical offices automate 70% of front desk calls and rebook no-shows with HIPAA-compliant AI. It’s not a sales call — I just want to show them something they’re likely paying staff to struggle with. Can you grab them for a sec?",
+                    "coldCall_GK_IntroduceRapidMedical": {
+                        text: "Yeah absolutely — my name’s [Your Name], I’m with RapidMedical. They may have heard about us already. We're helping practices like yours eliminate missed calls and get more new patients booked automatically. Just let them know [Your Name] from RapidMedical is on the line for a quick minute.",
                         responses: {
-                            "still_blocked": { buttonText: "Still Blocked / Dr. Unavailable", nextNodeKey: "coldCall_GK_StillBlocked" },
-                            "dr_available": { buttonText: "Dr. is Available / Put Through", nextNodeKey: "coldCall_DOC_Opener" },
-                            "ask_voicemail_live": { buttonText: "Asks if Voicemail/Live Staff", nextNodeKey: "coldCall_GK_VoicemailLiveQuery" }
+                            "gk_still_busy": { buttonText: "Still says they're busy", nextNodeKey: "coldCall_GK_HandleBusy"},
+                            "gk_ask_more_info": { buttonText: "Asks for more info / Send email", nextNodeKey: "coldCall_GK_OfferInfoAndDemo" },
+                            "gk_puts_through": { buttonText: "Okay, I'll see / Puts you through", nextNodeKey: "coldCall_DM_Opener_New" }
                         }
                     },
-                    "coldCall_GK_StillBlocked": {
-                        text: "No problem. Is Dr. [Last Name] mostly in surgery or with patients? Or is it a mix? (Listen) Okay, and do you handle voicemail, or is that live staff? (Listen) Got it. If they’re struggling with phone overwhelm or missed calls piling up, I have a 60-second demo that shows how we fix that. Can I offer that to them, or is there a better way to share a quick win?",
+                    "coldCall_GK_HandleBusy": {
+                        text: "No problem at all. I know things are hectic. Is there a better time today, perhaps in an hour, or would tomorrow morning be less slammed for a 60-second chat? We're showing practices how to handle 100% of their missed calls without lifting a finger.",
                         responses: {
-                            "offer_demo_call_accepted": { buttonText: "Offer Demo Call to Dr.", nextNodeKey: "coldCall_GK_OfferDemoToDr" },
-                            "ask_for_email": { buttonText: "Ask for Email/Best Time", nextNodeKey: "coldCall_GK_AskEmailTime" },
-                            "no_interest_exit": { buttonText: "No Interest/Polite Exit", nextNodeKey: "coldCall_End_NoSale_GK" }
+                            "gk_suggests_time": { buttonText: "Suggests a callback time", nextNodeKey: "coldCall_End_FollowUp_GK_Time" },
+                            "gk_still_no_time_send_info": { buttonText: "Still no time / Just send info", nextNodeKey: "coldCall_GK_OfferInfoAndDemo" },
+                            "gk_puts_through_eventually": { buttonText: "Actually, let me check / Puts through", nextNodeKey: "coldCall_DM_Opener_New" }
                         }
                     },
-                    "coldCall_GK_VoicemailLiveQuery": {
-                        text: "Great question - it actually handles both! For live staff, it reduces the number of calls they need to answer by automating routine inquiries and bookings. For voicemail, it ensures every call is captured and processed, even converting voicemails to appointments if appropriate. Would Dr. [Last Name] be interested in seeing how that works?",
-                         responses: {
-                            "dr_available": { buttonText: "Puts Dr. Through", nextNodeKey: "coldCall_DOC_Opener" },
-                            "offer_demo_call_accepted": { buttonText: "Suggest Demo For Dr.", nextNodeKey: "coldCall_GK_OfferDemoToDr" },
-                            "still_blocked": { buttonText: "Still Blocked", nextNodeKey: "coldCall_GK_AskEmailTime" }
-                        }
-                    },
-                    "coldCall_GK_OfferDemoToDr": {
-                        text: "Perfect. I can send a quick link for a 60-second video demo, or find a 15-min slot for Dr. [Last Name] to see it live. Which do you think they'd prefer?",
+                    "coldCall_GK_OfferInfoAndDemo": {
+                        text: "Absolutely. I can send over a quick one-pager. But look, most docs find it more impactful to see it live – it takes literally 60 seconds to understand. We’re doing 10-minute demos this week with a few select practices in [City/Area]. We need to get Dr. [Last Name] on one of these 10-minute slots this week. Can you make that happen?",
                         responses: {
-                            "send_link": { buttonText: "Send Link", nextNodeKey: "coldCall_End_SendInfo_GK" },
-                            "book_demo_time": { buttonText: "Book 15-min Demo", nextNodeKey: "coldCall_TransitionToClose_Demo" },
+                            "gk_tries_to_schedule_demo": { buttonText: "Okay, let me check calendar for demo", nextNodeKey: "coldCall_DM_DemoCTA_New" }, // Straight to booking if GK can
+                            "gk_insists_on_info_only": { buttonText: "No, just send the info for now", nextNodeKey: "coldCall_End_SendInfo_GK_WithAITaste" },
+                            "gk_not_interested_exit": { buttonText: "Not interested / Firm Exit", nextNodeKey: "coldCall_End_NoSale_GK" }
                         }
                     },
-                    "coldCall_GK_AskEmailTime": {
-                        text: "Understood. What's the best email to send a brief overview to Dr. [Last Name], or when is a typically less hectic time I might catch them for a minute?",
+
+                    // --- Decision Maker (DM) Path ---
+                    "coldCall_DM_Opener_New": {
+                        text: "Hey Dr. [Last Name], I appreciate you taking the call! My name’s [Your Name] — I’m with RapidMedical. I’ll keep this really short. We help private practices like yours in [City/Area] eliminate missed calls, book more new appointments 24/7, and significantly reduce no-shows with our AI receptionist. Sound like something worth 60 seconds of your time?",
                         responses: {
-                            "got_email_time": { buttonText: "Got Email/Time", nextNodeKey: "coldCall_End_FollowUp_GK" },
-                            "no_info_given": { buttonText: "No Info Given", nextNodeKey: "coldCall_End_NoSale_GK" }
+                            "dm_intrigued_tell_me_more": { buttonText: "Okay, 60 seconds. Tell me more.", nextNodeKey: "coldCall_DM_ValuePropPain" },
+                            "dm_what_is_this_exactly": { buttonText: "What is this exactly? AI?", nextNodeKey: "coldCall_DM_ExplainAI" },
+                            "dm_im_busy_now": { buttonText: "I'm busy right now.", nextNodeKey: "coldCall_DM_HandleBusy_New" },
+                            "dm_not_interested_initial": { buttonText: "Not interested.", nextNodeKey: "coldCall_DM_HandleNotInterested_Initial" }
                         }
                     },
-                    "coldCall_DOC_Opener": {
-                        text: "Hi Dr. [Last Name], this is [Your Name] from RapidMedical. Thanks for taking the call. (Pause for them to respond) I know you’re busy, so I’ll be quick: We're helping private practices like yours in [City] handle about 70% of front desk calls and rebook missed appointments using a HIPAA-compliant AI, effectively giving you an extra, highly efficient staff member for a fraction of the cost. This means less phone tag for your staff and more booked appointments. Sound interesting enough for 45 seconds?",
+                    "coldCall_DM_ValuePropPain": {
+                        text: "Basically, picture this: your phone rings, but your staff is swamped or it's after hours. Our AI answers, sounds just like a top-notch receptionist, and books that appointment. Handles 100% of missed calls. How many calls would you say your practice misses on a busy day or after hours, roughly?",
                         responses: {
-                            "sure_go_ahead": { buttonText: "Sure / Go ahead", nextNodeKey: "coldCall_DOC_QuickPrequal_Q1" },
-                            "what_is_this": { buttonText: "What is this? (Clarification)", nextNodeKey: "coldCall_DOC_Opener_Clarify" },
-                            "how_get_number": { buttonText: "How’d you get this number?", nextNodeKey: "coldCall_DOC_HowGetNumber" },
-                            "not_interested": { buttonText: "Not interested", nextNodeKey: "coldCall_OBJECTION_NotInterested_Initial" }
+                            "dm_answers_missed_calls_low": { buttonText: "Answers (Low / Not many)", nextNodeKey: "coldCall_DM_ValuePropPain_Low" },
+                            "dm_answers_missed_calls_high": { buttonText: "Answers (Significant / A lot)", nextNodeKey: "coldCall_DM_ValuePropPain_High" },
+                            "dm_skeptical_doesnt_miss_many": { buttonText: "Skeptical / We don't miss many", nextNodeKey: "coldCall_DM_AddressSkepticism_MissedCalls" }
                         }
                     },
-                    "coldCall_DOC_Opener_Clarify": {
-                        text: "It's a smart AI system that acts like a highly efficient receptionist, handling calls, scheduling, reminders, and even rebooking no-shows, all while integrating with your existing EMR. The goal is to free up your human staff for more complex patient interactions. Worth a minute to hear how?",
+                    "coldCall_DM_ValuePropPain_Low": {
+                        text: "Okay, even a few can add up. Plus, we also automate appointment reminders and follow-ups to reduce no-shows by up to 30%. And imagine freeing up your front desk staff from those routine calls, so they can focus on the patients right in front of them. Does that resonate at all?",
                         responses: {
-                             "sure_go_ahead": { buttonText: "Okay, tell me more", nextNodeKey: "coldCall_DOC_QuickPrequal_Q1" },
-                             "not_interested": { buttonText: "Still not interested", nextNodeKey: "coldCall_OBJECTION_NotInterested_Initial" }
+                            "dm_agrees_staff_time_valuable": { buttonText: "Yes, staff time is valuable.", nextNodeKey: "coldCall_DM_DemoCTA_New" },
+                            "dm_still_not_convinced_low": { buttonText: "Still not sure it's for us.", nextNodeKey: "coldCall_DM_OfferAITaste_ThenDemo" }
                         }
                     },
-                    "coldCall_DOC_HowGetNumber": {
-                        text: "Our team researches practices that might benefit from reducing phone overhead and improving patient access. Your practice came up as one that seems focused on [mention something specific if possible, e.g., patient care, modern technology]. My aim isn't to waste your time, just to see if we can offer significant value quickly. May I proceed?",
+                    "coldCall_DM_ValuePropPain_High": {
+                        text: "Exactly. So those [Number] missed calls? Our AI can convert a good chunk of those into booked appointments, 24/7. Plus, we automate reminders to cut no-shows by up to 30% and free up your front desk for patients in the office. See how that could be a game-changer?",
                         responses: {
-                             "sure_go_ahead": { buttonText: "Alright, go on", nextNodeKey: "coldCall_DOC_QuickPrequal_Q1" },
-                             "not_interested_exit": { buttonText: "Not interested/Exit", nextNodeKey: "coldCall_End_NoSale_PoliteExit" }
+                            "dm_sees_potential_high": { buttonText: "I see the potential.", nextNodeKey: "coldCall_DM_DemoCTA_New" },
+                            "dm_how_does_it_work_details": { buttonText: "How does that actually work?", nextNodeKey: "coldCall_DM_ExplainAI_Brief" }
                         }
                     },
-                    "coldCall_DOC_QuickPrequal_Q1": {
-                        text: "Great. Quickly, about how many calls do you think your front desk handles daily? (e.g., <50, 50-100, 100+)",
+                    "coldCall_DM_AddressSkepticism_MissedCalls": {
+                        text: "I hear you. Many practices we talk to initially feel they have good coverage. But what about calls that come in during lunch, right at closing, or when staff are all tied up? Our AI ensures every single one is handled professionally. Plus, it's not just about missed calls – it's about automating routine bookings and reminders to free up current staff. Would seeing it in action for 2 minutes change your mind?",
                         responses: {
-                            "answered_q1_low": { buttonText: "<50 calls", nextNodeKey: "coldCall_DOC_QuickPrequal_Q2" },
-                            "answered_q1_med": { buttonText: "50-100 calls", nextNodeKey: "coldCall_DOC_QuickPrequal_Q2" },
-                            "answered_q1_high": { buttonText: "100+ calls", nextNodeKey: "coldCall_DOC_QuickPrequal_Q2" },
+                            "dm_ok_2_min_peek": { buttonText: "Okay, 2 mins to see.", nextNodeKey: "coldCall_DM_OfferAITaste_ThenDemo" },
+                            "dm_still_skeptical_exit": { buttonText: "Still don't think we need it.", nextNodeKey: "coldCall_End_NoSale_DM_Polite" }
                         }
                     },
-                    "coldCall_DOC_QuickPrequal_Q2": {
-                        text: "And how many staff members are primarily responsible for answering these calls and managing appointments?",
+                    "coldCall_DM_ExplainAI": {
+                        text: "Correct, it's a HIPAA-compliant AI receptionist. Think of it as the most efficient, always-available staff member you've never had. It answers calls, books appointments directly into your EMR [mention specific EMR if known, otherwise 'your system'], handles FAQs, sends reminders, and even re-books no-shows. Patients love it because it's instant and always professional. Worth seeing how it handles a call?",
                         responses: {
-                            "answered_q2": { buttonText: "Prospect answers (e.g. 1-2 staff)", nextNodeKey: "coldCall_DOC_QuickPrequal_Q3" }
+                            "dm_intrigued_by_ai": { buttonText: "Okay, how does it handle a call?", nextNodeKey: "coldCall_DM_OfferAITaste_ThenDemo" },
+                            "dm_concerned_about_ai_quality": { buttonText: "Concerned about AI quality/patient experience.", nextNodeKey: "coldCall_DM_AddressAIQuality" },
+                            "dm_cost_concern_early": { buttonText: "What does something like this cost?", nextNodeKey: "coldCall_DM_HandleCost_Early" }
                         }
                     },
-                    "coldCall_DOC_QuickPrequal_Q3": {
-                        text: "Are you currently using any automated reminder system for appointments?",
+                    "coldCall_DM_ExplainAI_Brief": {
+                        text: "It's simple: a smart AI that integrates with your phone system and EMR. It talks to patients like a real person, books appointments, sends reminders, etc. The beauty is it handles the volume and repetition your staff struggles with. Want to just see it? I can show you in literally 60 seconds.",
                         responses: {
-                            "answered_q3_yes": { buttonText: "Yes, using reminders", nextNodeKey: "coldCall_DOC_QuickPrequal_Q4" },
-                            "answered_q3_no": { buttonText: "No reminder system", nextNodeKey: "coldCall_DOC_QuickPrequal_Q4_NoReminders" }
+                            "dm_ok_show_me_60s": { buttonText: "Alright, 60 seconds.", nextNodeKey: "coldCall_DM_DemoCTA_New_Urgency" },
+                            "dm_still_questions_ai": { buttonText: "More questions about the AI.", nextNodeKey: "coldCall_DM_AddressAIQuality" }
                         }
                     },
-                    "coldCall_DOC_QuickPrequal_Q4_NoReminders": {
-                        text: "Okay, no reminders. And what’s your current strategy for filling last-minute cancellations or no-shows?",
+                    "coldCall_DM_AddressAIQuality": {
+                        text: "Totally valid concern, Dr. [Last Name]. That’s why we offer a live test. Our AI is designed to be indistinguishable from a top-tier human receptionist – always polite, always accurate, and it can even handle different languages/accents. Many practices tell us patients compliment how efficient it is. The best way to judge is to hear it yourself. Can I send a test call to your phone right now?",
                         responses: {
-                             "answered_q4_manual_or_nothing": { buttonText: "Manual calls / We struggle / Nothing", nextNodeKey: "coldCall_DOC_MainValuePitch" }
+                            "dm_agrees_to_test_call": { buttonText: "Okay, send the test call.", nextNodeKey: "coldCall_DM_AITestCall_Trigger", action: "triggerAICall" },
+                            "dm_prefers_live_demo_still": { buttonText: "I'd rather just see a demo.", nextNodeKey: "coldCall_DM_DemoCTA_New" },
+                            "dm_skeptical_about_ai_still": { buttonText: "Still skeptical about AI.", nextNodeKey: "coldCall_DM_HandleNotInterested_AIConcern" }
                         }
                     },
-                    "coldCall_DOC_QuickPrequal_Q4": {
-                        text: "And for your current reminder system, does it automatically try to rebook patients who cancel or just confirm/remind?",
+                    "coldCall_DM_AITestCall_Trigger": {
+                        text: "Great! What’s the best number to send it to? (Prospect gives number) Okay, I’m triggering that now… you should see a call from [Caller ID Name/Number]. Let me know when it comes through... (Pause) ...So, what did you think of that interaction?",
                         responses: {
-                            "answered_q4_just_reminds": { buttonText: "Just reminds / Basic", nextNodeKey: "coldCall_DOC_MainValuePitch" },
-                            "answered_q4_some_rebooking": { buttonText: "Some rebooking capability", nextNodeKey: "coldCall_DOC_MainValuePitch_AdvancedSystem" }
+                            "dm_impressed_by_test": { buttonText: "Impressed / Sounds good!", nextNodeKey: "coldCall_DM_DemoCTA_AfterTest" },
+                            "dm_test_was_okay_questions": { buttonText: "It was okay... (has questions)", nextNodeKey: "coldCall_DM_AddressAITestFeedback" },
+                            "dm_did_not_receive_test": { buttonText: "Didn't receive it / Problem", nextNodeKey: "coldCall_DM_AITestCall_Troubleshoot" }
                         }
                     },
-                    "coldCall_DOC_MainValuePitch": {
-                        text: "Thanks, that’s helpful. So, imagine this: RapidMedical can automate about 70% of those routine calls. For appointment reminders, it not only confirms but if someone cancels, it instantly messages patients from your waitlist or offers slots to those needing earlier appointments, filling that gap in seconds. It also handles new patient registrations, prescription refill requests, and FAQs. This means your [Number] staff are freed up for higher-value tasks and patients get immediate responses 24/7. This typically results in [X]% fewer no-shows and recaptures [Y] hours of staff time daily.",
+                    "coldCall_DM_AITestCall_Troubleshoot": {
+                        text: "Hmm, sorry about that. Let me double-check the number: [Prospect's Phone Number]? Sometimes cell signals are tricky. Want to try once more, or I can show you a recording of it in a quick screen share as part of the demo?",
                         responses: {
-                            "sounds_interesting": { buttonText: "Sounds interesting", nextNodeKey: "coldCall_TransitionToClose_AskInterest" },
-                            "how_much_cost": { buttonText: "How much does it cost?", nextNodeKey: "coldCall_OBJECTION_Cost" },
-                            "email_info": { buttonText: "Email me something", nextNodeKey: "coldCall_OBJECTION_SendInfo" }
+                            "dm_try_test_again": { buttonText: "Try test call again.", nextNodeKey: "coldCall_DM_AITestCall_Trigger", action: "triggerAICall" },
+                            "dm_show_recording_in_demo": { buttonText: "Show recording in demo.", nextNodeKey: "coldCall_DM_DemoCTA_New" },
                         }
                     },
-                    "coldCall_DOC_MainValuePitch_AdvancedSystem": {
-                        text: "That's good you have some rebooking. Where RapidMedical enhances that is with proactive outreach based on predictive no-shows and by managing a dynamic waitlist that automatically offers slots the moment they open, often filling them in minutes without staff intervention. Plus, it handles new patient intake, FAQs, and refill requests. This means your [Number] staff are even more freed up. This typically results in an additional [X]% fewer no-shows and recaptures [Y] hours of staff time daily on top of what you have.",
+                    "coldCall_DM_AddressAITestFeedback": {
+                        text: "Appreciate the feedback. That test call is just a glimpse. The real magic happens when it's customized to your practice, using your specific greeting, handling your common questions. That's what the quick 10-minute demo shows. Fair enough to take a look?",
                         responses: {
-                            "sounds_interesting": { buttonText: "Okay, that's different", nextNodeKey: "coldCall_TransitionToClose_AskInterest" },
-                            "how_much_cost": { buttonText: "How much?", nextNodeKey: "coldCall_OBJECTION_Cost" },
+                            "dm_agrees_to_demo_after_feedback": { buttonText: "Okay, let's see the demo.", nextNodeKey: "coldCall_DM_DemoCTA_New" },
+                            "dm_still_not_sold_on_ai": { buttonText: "Still not sold on the AI.", nextNodeKey: "coldCall_End_NoSale_DM_Polite" }
                         }
                     },
-                    "coldCall_OBJECTION_NotInterested_Initial": {
-                        text: "I understand. Sometimes 'not interested' means 'I'm happy with what I have'. Could you tell me what system you're currently using for patient scheduling and reminders? Or what's working well?",
+                    "coldCall_DM_DemoCTA_AfterTest": {
+                        text: "Fantastic! That’s the reaction most doctors have. So, now that you've heard it, let's schedule that quick 10-minute live demo so you can see how it integrates and handles everything else. We’re doing them this week for select practices in [City/Area]. I have [Time 1] or [Time 2] open – which works?",
                         responses: {
-                            "answered_system": { buttonText: "Shares system / What works", nextNodeKey: "coldCall_DOC_TailoredValue" },
-                            "still_not_interested": { buttonText: "Still Not Interested", nextNodeKey: "coldCall_End_NoSale_PoliteExit" }
+                            "dm_books_slot_1": { buttonText: "[Time 1] works.", nextNodeKey: "coldCall_End_Booked_Demo_DM" },
+                            "dm_books_slot_2": { buttonText: "[Time 2] works.", nextNodeKey: "coldCall_End_Booked_Demo_DM" },
+                            "dm_propose_alt_time_or_now": { buttonText: "Neither work / Can you do now?", nextNodeKey: "coldCall_DM_HandleAltTime_Or_DemoNow" }
                         }
                     },
-                    "coldCall_OBJECTION_Cost": {
-                        text: "That's a fair question. It's less than you'd think – certainly less than hiring another staff member. For a practice like yours, it typically ranges from [Price Range Low] to [Price Range High] a month, depending on call volume and features. But most practices see it pay for itself within 2-3 months from recovered no-shows and improved efficiency alone. Does that sound like something that could fit the budget if it delivers those results?",
+                    "coldCall_DM_HandleBusy_New": {
+                        text: "I totally get it, Dr. [Last Name]. That’s exactly why I called. Practices using RapidMedical free up their staff by 20-30% because our AI handles all the routine calls. When would be a better time for just 60 seconds? Maybe later today around [Suggest Time e.g., 4 PM] or tomorrow morning at [Suggest Time e.g., 9 AM]?",
                         responses: {
-                             "maybe_tell_more": { buttonText: "Maybe, tell me more", nextNodeKey: "coldCall_TransitionToClose_AskInterest" },
-                             "too_expensive": { buttonText: "That's too expensive", nextNodeKey: "coldCall_HandleObjection_TooExpensive_Response" }
+                            "dm_agrees_to_later_callback": { buttonText: "Okay, call me [Agreed Time].", nextNodeKey: "coldCall_End_FollowUp_DM_Time" },
+                            "dm_still_busy_send_info": { buttonText: "Still too busy, just send info.", nextNodeKey: "coldCall_DM_HandleSendInfo_New" },
+                            "dm_not_interested_busy_exit": { buttonText: "Not interested / Too busy (Firm).", nextNodeKey: "coldCall_End_NoSale_DM_Busy" }
                         }
                     },
-                    "coldCall_HandleObjection_TooExpensive_Response": {
-                        text: "I hear you. What kind of budget would you typically allocate for a tool that could save [Number] hours of staff work per week and reduce missed appointments by [X]%? Sometimes we find practices are actually losing more than the tool costs in missed revenue and staff time.",
-                         responses: {
-                            "discuss_value_further": { buttonText: "Discuss Value/ROI", nextNodeKey: "coldCall_DOC_MainValuePitch"}, // Loop back or to a specific ROI convo
-                            "still_too_expensive": { buttonText: "Still too much / Not for us", nextNodeKey: "coldCall_End_NoSale_Price"}
-                        }
-                    },
-                    "coldCall_OBJECTION_SendInfo": {
-                        text: "Happy to send something over. But honestly, hearing it live takes 60 seconds and you’ll know right away if it’s a fit. I can show you right now on my screen or even trigger a test call to your phone. What do you say? Or, if you must have an email, what specific info would be most useful?",
+                    "coldCall_DM_HandleNotInterested_Initial": {
+                        text: "Not interested? I get it, Dr. [Last Name]. Sometimes that means 'I'm slammed' or 'I've heard it all.' If I could show you in 30 seconds how practices are booking 5-10 more appointments a week, hands-free, would that be worth a peek? Or what are you using now that you’re happy with?",
                         responses: {
-                            "do_live_demo_now": { buttonText: "Okay, show me now (60s)", nextNodeKey: "coldCall_TransitionToClose_LiveDemo" },
-                            "trigger_test_call": { buttonText: "Okay, trigger test call", nextNodeKey: "coldCall_Offer_AI_Test_Call" },
-                            "insist_email": { buttonText: "Still prefer email (specify info)", nextNodeKey: "coldCall_End_SendInfo_GK" }
+                            "dm_intrigued_by_claim_30s": { buttonText: "Okay, 30 seconds for that claim.", nextNodeKey: "coldCall_DM_ValuePropPain" }, // Back to value prop
+                            "dm_shares_current_system": { buttonText: "Shares current system.", nextNodeKey: "coldCall_DM_AcknowledgeCurrentSystem" },
+                            "dm_still_not_interested_firm": { buttonText: "Still not interested (Firm).", nextNodeKey: "coldCall_End_NoSale_DM_NotInterested" }
                         }
                     },
-                    "coldCall_DOC_TailoredValue": { // After they share their current system
-                        text: "Thanks for sharing. Knowing you use [Prospect's Current System], our solution is particularly effective because it [mention specific advantage, e.g., 'integrates seamlessly and fills in the gaps like automated waitlist management and 24/7 FAQ handling, which [Prospect's Current System] typically doesn't cover']. This means you get the benefits without overhauling your current setup.",
+                    "coldCall_DM_HandleNotInterested_AIConcern": {
+                        text: "I understand the hesitation about AI, Dr. [Last Name]. Many were until they saw *this* AI. It's not like the frustrating bots you've probably encountered. If nothing else, I’ll send you a quick test call that lets you hear the AI in action, no strings attached. If you like it, great. If not, no harm done. Fair?",
                         responses: {
-                            "how_integrate": { buttonText: "How does it integrate?", nextNodeKey: "coldCall_DOC_IntegrationExplanation" },
-                            "sounds_good_demo": { buttonText: "Okay, sounds good for a demo", nextNodeKey: "coldCall_TransitionToClose_Demo" }
+                            "dm_agrees_to_receive_test_call_info": { buttonText: "Okay, send the test call link/info.", nextNodeKey: "coldCall_End_SendInfo_DM_AITaste" },
+                            "dm_still_firmly_not_interested_ai": { buttonText: "No thanks, really not interested in AI.", nextNodeKey: "coldCall_End_NoSale_DM_NotInterested" }
                         }
                     },
-                    "coldCall_DOC_IntegrationExplanation": {
-                        text: "We use a secure API connection for most common EMRs, or a lightweight desktop application that works alongside your system without deep integration if preferred. It's designed to be minimally disruptive. The AI handles the interaction, and confirmed appointments or updates are pushed into your EMR automatically. Want to see a diagram or a quick demo of that?",
+                    "coldCall_DM_AcknowledgeCurrentSystem": {
+                        text: "Okay, you're using [Current System]. Many practices we work with used that too. They find RapidMedical complements it by handling 100% of missed calls and automating the appointment lifecycle in ways [Current System] doesn't, especially after hours. We're not looking to rip and replace, but to add a new layer of efficiency. Worth a 10-min demo to see that difference?",
                         responses: {
-                            "see_diagram_demo": { buttonText: "Yes, show demo/diagram", nextNodeKey: "coldCall_TransitionToClose_LiveDemo"},
-                            "less_technical_pls": { buttonText: "Less technical, more benefits", nextNodeKey: "coldCall_DOC_MainValuePitch"}
+                            "dm_agrees_to_demo_comparison": { buttonText: "Okay, show me the difference (10-min demo).", nextNodeKey: "coldCall_DM_DemoCTA_New" },
+                            "dm_happy_with_current_exit": { buttonText: "No, we're happy with [Current System].", nextNodeKey: "coldCall_End_NoSale_DM_HappyWithCurrent" }
                         }
                     },
-                    "coldCall_Offer_AI_Test_Call": {
-                        text: "Great! This is cool. I can trigger a quick test call to your phone right now. It’ll sound like a real receptionist, it can try to book a fake appointment with you, and then it'll wrap up. It’s very short and you’ll see how natural it sounds. What number should I send it to?",
+                    "coldCall_DM_HandleSendInfo_New": {
+                        text: "Absolutely, Dr. [Last Name]. I’ll send that info right over. I’ll also include a link so you can hear the AI receptionist in action yourself – it’s pretty impressive. To make sure the demo is super relevant if you do want to see it, what’s the biggest challenge: missed calls, no-shows, or staff being tied to phones?",
                         responses: {
-                            "gives_number_test_call": { buttonText: "Prospect provides number", nextNodeKey: "coldCall_AITestCall_Triggered", action: "triggerAICall" },
-                            "declines_test_call": { buttonText: "Declines test call", nextNodeKey: "coldCall_TransitionToClose_AskInterest" }
+                            "dm_answers_challenge_then_info": { buttonText: "Answers challenge (then send info).", nextNodeKey: "coldCall_End_SendInfo_DM_WithChallenge" },
+                            "dm_just_send_general_info": { buttonText: "Just send general info.", nextNodeKey: "coldCall_End_SendInfo_DM_Generic" }
                         }
                     },
-                    "coldCall_AITestCall_Triggered": {
-                        text: "Okay, sending that test call to [Prospect's Phone Number] now... (Wait a few seconds) Did you receive it? (After they confirm and experience it) What did you think?",
+                    "coldCall_DM_OfferAITaste_ThenDemo": {
+                        text: "Perfect. Instead of a boring explanation, how about I send a live test call to your phone right now? You'll hear firsthand how natural and efficient our AI is. Takes 30 seconds. If you like what you hear, we can then jump into that quick 10-min demo. Sound good?",
                         responses: {
-                            "impressed_positive": { buttonText: "Impressed / Positive Feedback", nextNodeKey: "coldCall_TransitionToClose_Demo" },
-                            "neutral_skeptical": { buttonText: "Neutral / Skeptical", nextNodeKey: "coldCall_AITestCall_AddressSkepticism" },
-                            "did_not_receive": { buttonText: "Didn't receive / Technical issue", nextNodeKey: "coldCall_AITestCall_Troubleshoot" }
+                            "dm_agrees_to_test_call_first": { buttonText: "Okay, send the test call.", nextNodeKey: "coldCall_DM_AITestCall_Trigger", action: "triggerAICall" },
+                            "dm_just_do_demo_no_test": { buttonText: "Let's just do the 10-min demo.", nextNodeKey: "coldCall_DM_DemoCTA_New_Urgency" },
+                            "dm_hesitant_ask_more": {buttonText: "What's involved in the test call?", nextNodeKey: "coldCall_DM_ExplainTestCall"}
                         }
                     },
-                    "coldCall_AITestCall_AddressSkepticism": {
-                        text: "No problem, the test call is just a very basic example. The real power comes when it's customized to your practice's specific needs, scripts, and integrates with your calendar. That's what I'd love to show you in a quick 15-minute demo.",
-                         responses: {
-                            "ok_show_demo": { buttonText: "Okay, show me the demo", nextNodeKey: "coldCall_TransitionToClose_Demo"},
-                            "still_not_convinced": { buttonText: "Still not convinced", nextNodeKey: "coldCall_End_FollowUp_SendMoreInfo"}
-                        }
-                    },
-                     "coldCall_AITestCall_Troubleshoot": {
-                        text: "Hmm, sorry about that. Let me double-check the number: [Prospect's Phone Number]? Sometimes cell reception can be tricky. Alternatively, I can show you a recording of it in a quick screen share?",
+                    "coldCall_DM_ExplainTestCall": {
+                        text: "It's super simple. I'll trigger a call to your phone from our system. You'll hear our AI introduce itself and attempt to interact with you like it would with a patient – maybe try to book a sample appointment. It's just to give you a real feel for the voice quality and responsiveness. No pressure. Want to try it?",
                         responses: {
-                            "try_again_number_correct": { buttonText: "Try again (number correct)", nextNodeKey: "coldCall_AITestCall_Triggered", action: "triggerAICall" },
-                            "show_recording": { buttonText: "Show recording instead", nextNodeKey: "coldCall_TransitionToClose_LiveDemo" },
-                            "skip_it": { buttonText: "Let's skip the test call", nextNodeKey: "coldCall_TransitionToClose_AskInterest"}
+                            "dm_ok_try_test_call": { buttonText: "Alright, let's try the test call.", nextNodeKey: "coldCall_DM_AITestCall_Trigger", action: "triggerAICall" },
+                            "dm_skip_test_to_demo": { buttonText: "Actually, let's just schedule the demo.", nextNodeKey: "coldCall_DM_DemoCTA_New_Urgency" }
                         }
                     },
-                    "coldCall_TransitionToClose_AskInterest": {
-                        text: "So, does the idea of automating a large chunk of your front desk calls and intelligently rebooking no-shows sound like something that could be valuable for your practice?",
+                    "coldCall_DM_DemoCTA_New": {
+                        text: "Great! Most doctors are blown away once they see it. We're doing exclusive 10-minute live demos this week for select practices in [City/Area]. I have [Time 1] or [Time 2] available. Which of those spots works for you, Dr. [Last Name]?",
                         responses: {
-                            "yes_sounds_valuable": { buttonText: "Yes, sounds valuable", nextNodeKey: "coldCall_TransitionToClose_Demo" },
-                            "maybe_need_more_info": { buttonText: "Maybe, need more info", nextNodeKey: "coldCall_OBJECTION_SendInfo" },
-                            "no_not_really": { buttonText: "No, not really", nextNodeKey: "coldCall_End_NoSale_PoliteExit" }
+                            "dm_books_slot_1": { buttonText: "[Time 1] works.", nextNodeKey: "coldCall_End_Booked_Demo_DM" },
+                            "dm_books_slot_2": { buttonText: "[Time 2] works.", nextNodeKey: "coldCall_End_Booked_Demo_DM" },
+                            "dm_propose_alt_time_or_now": { buttonText: "Neither work / Can you do now?", nextNodeKey: "coldCall_DM_HandleAltTime_Or_DemoNow" }
                         }
                     },
-                    "coldCall_TransitionToClose_Demo": {
-                        text: "Excellent. The best way to see the full impact is with a quick, personalized demo. I can show you exactly how it would work for your practice. I’ve got [Date/Time] or [Alt Time] available. Which works better for you and Dr. [Last Name]?",
-                        action: "generateMeetLink",
+                    "coldCall_DM_DemoCTA_New_Urgency": { // Slightly more urgent version
+                        text: "Smart move. You won't regret it. We have a couple of 10-minute slots open this afternoon due to reschedules: [Time A] or [Time B]? Or does tomorrow morning, say [Time C], work better to see how this AI can transform your patient intake?",
                         responses: {
-                            "accepts_first_slot": { buttonText: "Accepts [Date/Time]", nextNodeKey: "coldCall_End_Booked_Demo" },
-                            "accepts_alt_slot": { buttonText: "Accepts [Alt Time]", nextNodeKey: "coldCall_End_Booked_Demo" },
-                            "needs_different_time": { buttonText: "Needs different time / Not now", nextNodeKey: "coldCall_HandleDemoDelay" }
+                            "dm_books_urgent_slot_A": { buttonText: "[Time A] this afternoon.", nextNodeKey: "coldCall_End_Booked_Demo_DM" },
+                            "dm_books_urgent_slot_B": { buttonText: "[Time B] this afternoon.", nextNodeKey: "coldCall_End_Booked_Demo_DM" },
+                            "dm_books_urgent_slot_C": { buttonText: "[Time C] tomorrow.", nextNodeKey: "coldCall_End_Booked_Demo_DM" },
+                            "dm_needs_other_time_urgent": { buttonText: "None of those. Got anything else?", nextNodeKey: "coldCall_DM_OfferCalendarLink_Or_Specific" }
                         }
                     },
-                     "coldCall_TransitionToClose_LiveDemo": {
-                        text: "Great. If you have a minute, I can share my screen right now and give you that 60-second live walkthrough. Or we can schedule a more in-depth 15-minute demo. What's best for you?",
-                        action: "generateMeetLink",
+                    "coldCall_DM_HandleAltTime_Or_DemoNow": {
+                        text: "If you have 10 minutes right now, Dr. [Last Name], I can pull up the demo environment and show you immediately. Otherwise, what day and time next week would be good for you? Or I can send you my calendar link.",
+                        action: "generateMeetLink", // Generate link in case they want to do it now
                         responses: {
-                            "do_live_walkthrough_now": { buttonText: "Do live walkthrough now", nextNodeKey: "coldCall_LiveWalkthrough_InProgress" },
-                            "schedule_15_min_demo": { buttonText: "Schedule 15-min demo", nextNodeKey: "coldCall_TransitionToClose_Demo" },
-                            "cant_do_now": { buttonText: "Can't do it now", nextNodeKey: "coldCall_HandleDemoDelay" }
+                            "dm_can_do_demo_now": { buttonText: "Yes, I have 10 mins now!", nextNodeKey: "coldCall_DM_LiveDemo_InProgress" },
+                            "dm_suggests_alt_time": { buttonText: "Suggests alternative time.", nextNodeKey: "coldCall_End_Booked_Demo_DM_AltTime" }, // Needs node to confirm alt time
+                            "dm_requests_calendar_link": { buttonText: "Send me your calendar link.", nextNodeKey: "coldCall_End_SendCalendarLink_DM" }
                         }
                     },
-                    "coldCall_LiveWalkthrough_InProgress": {
-                        text: "(Sharing screen...) Okay, you should see my screen now. This is the main dashboard... (Walk through key features for 60-90 seconds, focusing on automation and rebooking). Any initial questions based on that quick look?",
+                    "coldCall_DM_LiveDemo_InProgress": {
+                        text: "Perfect! (Sharing screen if applicable, or guiding them to a link if voice-only demo) You should see the RapidMedical dashboard now / I'm activating the live AI interaction. Notice how it [mention key feature 1, e.g., 'immediately picks up and offers booking options']. Now, if a patient says '[common scenario e.g., wants to reschedule]', our AI [handles it by e.g., 'offering available slots from your EMR']. Any questions as you see this?",
                         responses: {
-                            "looks_good_book_full_demo": { buttonText: "Looks good, let's book full demo", nextNodeKey: "coldCall_TransitionToClose_Demo"},
-                            "has_questions": { buttonText: "Yes, I have a question...", nextNodeKey: "coldCall_Handle_LiveDemo_Questions"}
+                            "dm_impressed_book_next_steps": { buttonText: "Impressed! What are the next steps?", nextNodeKey: "coldCall_DM_PostLiveDemo_NextSteps" },
+                            "dm_has_questions_during_live_demo": { buttonText: "Yes, question about [feature X]...", nextNodeKey: "coldCall_DM_HandleLiveDemoQuestions" }
                         }
                     },
-                    "coldCall_Handle_LiveDemo_Questions":{
-                        text: "Sure, what's your question? (Listen and answer concisely). Does that clarify it for you?",
+                    "coldCall_DM_HandleLiveDemoQuestions": {
+                        text: "Great question about [feature X]. It works by [concise explanation]. Does that make sense? What other questions do you have as you see this in action?",
                         responses: {
-                            "yes_clear_book_demo": {buttonText: "Yes, clear. Let's book a demo.", nextNodeKey: "coldCall_TransitionToClose_Demo"},
-                            "still_has_questions": {buttonText: "I have more questions.", nextNodeKey: "coldCall_Handle_LiveDemo_Questions"}, // Loop or specific
-                            "not_convinced_end": {buttonText: "Not convinced, end call.", nextNodeKey: "coldCall_End_NoSale_PoliteExit"}
+                            "dm_question_answered_continue_demo": { buttonText: "Makes sense, continue demo.", nextNodeKey: "coldCall_DM_LiveDemo_InProgress" }, // Or a more specific demo point
+                            "dm_satisfied_next_steps": { buttonText: "No more questions, what's next?", nextNodeKey: "coldCall_DM_PostLiveDemo_NextSteps" }
                         }
                     },
-                    "coldCall_HandleDemoDelay": {
-                        text: "No problem. What’s a better time or day to look at? Or would it be easier if I send you a link to my calendar to pick a spot?",
+                    "coldCall_DM_PostLiveDemo_NextSteps": {
+                        text: "So, you've seen it live. Simple, powerful, right? The next step is typically a quick chat about your specific EMR and call volume to confirm the best setup, then we can get you activated. Or would you like a formal proposal first?",
                         responses: {
-                            "suggests_new_time": { buttonText: "Suggests new time", nextNodeKey: "coldCall_End_Booked_Demo" }, // Assume new time is confirmed
-                            "take_calendar_link": { buttonText: "Send calendar link", nextNodeKey: "coldCall_End_FollowUp_SendLink" },
-                            "not_sure_defer": { buttonText: "Not sure, will get back / Defer", nextNodeKey: "coldCall_End_FollowUp_Defer" }
+                            "dm_ready_to_discuss_setup": { buttonText: "Let's discuss setup.", nextNodeKey: "coldCall_End_Booked_FollowUpCall_DM" }, // Could be 'endCall_Booked' if it's a sale
+                            "dm_wants_proposal": { buttonText: "Send a proposal first.", nextNodeKey: "coldCall_End_SendProposal_DM" }
                         }
                     },
-                    "coldCall_End_NoSale_GK": { text: "Alright, thanks for your time. Have a good day.", action: "endCall_NoSale" },
-                    "coldCall_End_FollowUp_GK": { text: "Great, I'll send that info to [Email Address] / make a note to call back on [Date/Time]. Thanks!", action: "endCall_FollowUp" },
-                    "coldCall_End_SendInfo_GK": { text: "Will do. I'll send a concise email with the demo link to [Email Address]. Thanks for your help!", action: "endCall_FollowUp" },
-                    "coldCall_End_Booked_Demo": { text: "Excellent! Demo booked for [Date/Time]. We'll send a calendar invite to you and Dr. [Last Name]. Looking forward to it!", action: "endCall_Booked" },
-                    "coldCall_End_NoSale_PoliteExit": { text: "I appreciate your honesty. Thanks for your time, Dr. [Last Name]. Have a great day.", action: "endCall_NoSale" },
-                     "coldCall_End_NoSale_Price": { text: "I understand. Price is definitely important. Thanks for considering us. Have a great day.", action: "endCall_NoSale" },
-                    "coldCall_End_FollowUp_SendLink": { text: "Okay, I'll email you a link to my calendar. Please pick a time that works best for Dr. [Last Name].", action: "endCall_FollowUp" },
-                    "coldCall_End_FollowUp_Defer": { text: "Understood. When would be a good time to check back in with you on this?", action: "endCall_FollowUp" },
-                    "coldCall_End_FollowUp_SendMoreInfo": {text: "Okay, I can send some more detailed information for you to review. What's the best email for that?", action: "endCall_FollowUp"}
+                    "coldCall_DM_HandleCost_Early": {
+                        text: "Fair question, Dr. [Last Name]. It’s surprisingly affordable – less than the cost of one lost new patient or a part-time staffer trying to juggle calls. For a practice like yours, it generally runs between [Price Range Low] and [Price Range High] per month, all inclusive. Most practices see it pay for itself in the first month or two just from new patients booked and no-shows reduced. Does that sound in the ballpark if it delivers those results?",
+                        responses: {
+                            "dm_price_seems_reasonable_continue": { buttonText: "Price seems reasonable, continue.", nextNodeKey: "coldCall_DM_ValuePropPain" }, // Back to value prop or demo CTA
+                            "dm_price_too_high_early": { buttonText: "That's too high / More than expected.", nextNodeKey: "coldCall_DM_AddressPriceObjection_Early" },
+                            "dm_need_to_think_about_price": { buttonText: "Need to think about that price.", nextNodeKey: "coldCall_DM_OfferAITaste_ThenDemo" } // Pivot to demo to show value
+                        }
+                    },
+                    "coldCall_DM_AddressPriceObjection_Early": {
+                        text: "I hear you. Many initially feel that way until they see the ROI. If this AI could book just 2-3 extra high-value patients a month for you, or save your staff 10 hours a week from phone tag, what would that be worth? That’s what we consistently deliver. Perhaps seeing the 10-minute demo would help illustrate that value?",
+                        responses: {
+                            "dm_agrees_to_demo_despite_price_concern": { buttonText: "Okay, show me the demo.", nextNodeKey: "coldCall_DM_DemoCTA_New" },
+                            "dm_still_stuck_on_price": { buttonText: "Still sounds like too much.", nextNodeKey: "coldCall_End_NoSale_DM_Price" }
+                        }
+                    },
+                    "coldCall_DM_OfferCalendarLink_Or_Specific": {
+                        text: "No problem. I can send you a link to my live calendar to pick a 10-15 minute slot that's perfect for you. Or, are mornings or afternoons generally better next week, say Tuesday or Wednesday?",
+                        responses: {
+                            "dm_take_calendar_link": { buttonText: "Send calendar link.", nextNodeKey: "coldCall_End_SendCalendarLink_DM" },
+                            "dm_suggests_general_availability": { buttonText: "Suggests general time (e.g. Tue PM)", nextNodeKey: "coldCall_DM_ConfirmSpecificTime" } // Need to narrow down
+                        }
+                    },
+                    "coldCall_DM_ConfirmSpecificTime": { // Example if they say "Tuesday PM"
+                        text: "Okay, Tuesday afternoon. How about 2:00 PM or 3:00 PM on Tuesday for that quick 10-minute demo?",
+                        responses: {
+                            "dm_confirms_specific_alt_time": { buttonText: "2:00 PM Tuesday is good.", nextNodeKey: "coldCall_End_Booked_Demo_DM_AltTime" },
+                            "dm_needs_other_specific_alt_time": { buttonText: "Neither work, try again.", nextNodeKey: "coldCall_DM_OfferCalendarLink_Or_Specific" } // Loop or offer link again
+                        }
+                    },
+
+                    // --- End Nodes ---
+                    "coldCall_End_Booked_Demo_DM": { text: "Excellent, Dr. [Last Name]! Demo booked for [Time 1 / Time 2]. You'll get a calendar invite from RapidMedical with the Google Meet link. Looking forward to showing you this!", action: "endCall_Booked" },
+                    "coldCall_End_Booked_Demo_DM_AltTime": { text: "Perfect! Demo confirmed for [Agreed Alternative Time]. Calendar invite with the Google Meet link is on its way from RapidMedical. Talk soon!", action: "endCall_Booked" },
+                    "coldCall_End_FollowUp_GK_Time": { text: "Great, [Gatekeeper Name], I'll call back at [Agreed Time]. Appreciate your help!", action: "endCall_FollowUp" },
+                    "coldCall_End_FollowUp_DM_Time": { text: "Sounds good, Dr. [Last Name]. I'll call you back at [Agreed Time]. Have a great day.", action: "endCall_FollowUp" },
+                    "coldCall_End_SendInfo_GK_WithAITaste": { text: "Will do, [Gatekeeper Name]. I'll send that one-pager and a link so Dr. [Last Name] can hear the AI. I'll follow up if I don't hear back. Thanks!", action: "endCall_FollowUp" },
+                    "coldCall_End_SendInfo_DM_WithChallenge": { text: "Got it. I'll email you the info on how we address [Challenge e.g., missed calls], including the AI test link. Expect it shortly from [Your Name] at RapidMedical.", action: "endCall_FollowUp" },
+                    "coldCall_End_SendInfo_DM_Generic": { text: "Okay, Dr. [Last Name], I'll send that general overview and the AI test link from RapidMedical. Keep an eye out for an email from [Your Name].", action: "endCall_FollowUp" },
+                    "coldCall_End_SendInfo_DM_AITaste": { text: "You got it. I'll email you a link to test the AI receptionist from RapidMedical. No pressure, just give it a listen. My contact info will be there if you're impressed. Thanks, Dr. [Last Name]!", action: "endCall_FollowUp" },
+                    "coldCall_End_SendCalendarLink_DM": { text: "Sure thing. I'm sending you a link to my calendar now. Please pick a 10-15 minute slot that works best for you, Dr. [Last Name]. The email will be from [Your Name] at RapidMedical.", action: "endCall_FollowUp" },
+                    "coldCall_End_SendProposal_DM": { text: "Okay, Dr. [Last Name]. I'll prepare a formal proposal based on our discussion and get that over to you by [Timeframe, e.g., end of day]. It will come from [Your Name] at RapidMedical.", action: "endCall_FollowUp" },
+                    "coldCall_End_Booked_FollowUpCall_DM": { text: "Great. I'll schedule a brief follow-up call for [Agreed time/day] to discuss setup for RapidMedical. Invite to follow. Thanks, Dr. [Last Name]!", action: "endCall_FollowUp" }, // Could also be endCall_Booked if it's very firm
+
+                    "coldCall_End_NoSale_GK": { text: "Alright, [Gatekeeper Name], I appreciate your time. Have a good one.", action: "endCall_NoSale" },
+                    "coldCall_End_NoSale_DM_Busy": { text: "Understood, Dr. [Last Name]. Sounds like I caught you at a bad time. I'll try to be more fortunate next time. Thanks.", action: "endCall_NoSale" },
+                    "coldCall_End_NoSale_DM_NotInterested": { text: "No problem at all, Dr. [Last Name]. Appreciate your directness. Have a great day.", action: "endCall_NoSale" },
+                    "coldCall_End_NoSale_DM_Price": { text: "I get it, budget is key. Thanks for considering RapidMedical, Dr. [Last Name].", action: "endCall_NoSale" },
+                    "coldCall_End_NoSale_DM_HappyWithCurrent": { text: "Okay, Dr. [Last Name], sounds like you have it covered with [Current System]. Thanks for your time.", action: "endCall_NoSale" },
+                    "coldCall_End_NoSale_DM_Polite": { text: "I understand, Dr. [Last Name]. Thanks for the feedback and your time today.", action: "endCall_NoSale" }
                 }
             },
             bookedNoTime: {
@@ -498,7 +530,7 @@
                         responses: {
                             "accepts_reschedule_slot1": { buttonText: "Accepts [Date/Time]", nextNodeKey: "bookedNoTime_End_Rescheduled" },
                             "accepts_reschedule_slot2": { buttonText: "Accepts [Alt Time]", nextNodeKey: "bookedNoTime_End_Rescheduled" },
-                            "ask_for_calendar_link": { buttonText: "Can you send a calendar link?", nextNodeKey: "bookedNoTime_End_SendCalendarLink" }
+                            "ask_for_calendar_link": { buttonText: "Or send a calendar link?", nextNodeKey: "bookedNoTime_End_SendCalendarLink" } 
                         }
                     },
                     "bookedNoTime_ConfirmPain_Q1": {
@@ -758,9 +790,17 @@
         const scriptDisplay = document.getElementById('script-display');
         const prospectResponses = document.getElementById('prospect-responses');
 
-        const toggleObjections = document.getElementById('toggle-objections');
-        const objectionsList = document.getElementById('objections-list');
-        const objectionWidget = document.getElementById('objection-widget'); 
+        // const toggleObjections = document.getElementById('toggle-objections'); // Old button, removed
+        const objectionsList = document.getElementById('objections-list'); // Now inside modal
+        // const objectionWidget = document.getElementById('objection-widget');  // Old container, removed
+
+        // New DOM Elements for Objection Modal
+        const floatingObjectionBtn = document.getElementById('floating-objection-btn');
+        const objectionModal = document.getElementById('objection-modal');
+        const closeModalBtn = document.getElementById('close-objection-modal'); 
+        const objectionSearchInput = document.getElementById('objection-search'); 
+        const modalBackdrop = document.querySelector('#objection-modal .modal-backdrop');
+
 
         const toggleNotes = document.getElementById('toggle-notes');
         const noteTool = document.getElementById('note-tool'); 
@@ -775,13 +815,18 @@
 
         // 3. Initial UI State Function (mostly unchanged)
         function resetToStartScreen() {
-            startScreen.style.display = 'flex'; 
-            callInterface.style.display = 'none';
-            objectionWidget.style.display = 'none'; 
+            // Use classes for main section visibility
+            startScreen.classList.remove('section-hidden');
+            startScreen.classList.add('section-visible');
+            callInterface.classList.add('section-hidden');
+            callInterface.classList.remove('section-visible');
+            
+            floatingObjectionBtn.style.display = 'none'; 
+            objectionModal.classList.add('hidden'); 
+            objectionModal.style.display = 'none'; 
+
             noteTool.style.display = 'none';      
             meetLinkArea.style.display = 'none';
-            objectionsList.style.display = 'none'; // Ensure objection list is hidden too
-
             // Clear content
             if(animationTimeoutId) clearTimeout(animationTimeoutId);
             scriptDisplay.innerHTML = '';
@@ -799,14 +844,15 @@
 
         // 4. Start Screen Button Logic (updated to call full displayCurrentScriptNode)
         function initializeCallInterface(scriptType) {
-            startScreen.style.display = 'none';
-            callInterface.style.display = 'block'; 
+            // Use classes for main section visibility
+            startScreen.classList.add('section-hidden');
+            startScreen.classList.remove('section-visible');
+            callInterface.classList.remove('section-hidden');
+            callInterface.classList.add('section-visible');
             
-            objectionWidget.style.display = 'block'; 
-            objectionsList.style.display = 'none'; 
+            floatingObjectionBtn.style.display = 'flex'; // Changed to flex to help center icon if needed
             
             noteTool.style.display = 'block'; 
-            // Hide note inputs initially when note tool is shown
             const noteToolChildren = Array.from(noteTool.children);
             noteToolChildren.forEach(child => {
                 if (child.id !== 'toggle-notes') { 
@@ -945,15 +991,24 @@
             }
         }
 
-        // 5. Widget Toggling Logic (mostly unchanged, ensure it works with new structure)
-        toggleObjections.addEventListener('click', () => {
-            if (objectionsList.style.display === 'none' || objectionsList.style.display === '') {
-                objectionsList.style.display = 'block';
-            } else {
-                objectionsList.style.display = 'none';
-            }
+        // 5. Widget Toggling Logic 
+        // Objection Modal Toggling
+        floatingObjectionBtn.addEventListener('click', () => {
+            objectionModal.classList.remove('hidden');
+            objectionModal.style.display = 'flex'; 
         });
-        
+
+        closeModalBtn.addEventListener('click', () => { 
+            objectionModal.classList.add('hidden');
+            objectionModal.style.display = 'none';
+        });
+
+        modalBackdrop.addEventListener('click', () => { 
+            objectionModal.classList.add('hidden');
+            objectionModal.style.display = 'none';
+        });
+
+        // Note Toggling (remains largely the same)
         toggleNotes.addEventListener('click', () => {
             const noteToolChildren = Array.from(noteTool.children);
             let allCurrentlyHidden = true;
@@ -974,18 +1029,36 @@
             });
         });
 
+
+        // New: Objection Search/Filter Functionality
+        objectionSearchInput.addEventListener('input', () => { 
+            const searchTerm = objectionSearchInput.value.toLowerCase(); 
+            const items = objectionsList.getElementsByTagName('div'); 
+
+            Array.from(items).forEach(item => {
+                const itemText = item.textContent || item.innerText;
+                if (itemText.toLowerCase().includes(searchTerm)) {
+                    item.style.display = ""; 
+                } else {
+                    item.style.display = "none";
+                }
+            });
+        });
+
         // 5. Populate Objection Handler (`populateObjectionsWidget()`)
+        // This function now populates the list inside the modal.
         function populateObjectionsWidget() {
-            objectionsList.innerHTML = ''; // Clear previous (if any)
+            objectionsList.innerHTML = ''; 
             for (const key in allObjections) {
                 if (allObjections.hasOwnProperty(key)) {
                     const div = document.createElement('div');
-                    div.innerHTML = `<strong>${key}:</strong> ${allObjections[key]}`;
-                    div.style.marginBottom = '10px'; // Add some spacing
+                    // InnerHTML will be structured for CSS: <strong>Title</strong>Rebuttal Text
+                    div.innerHTML = `<strong>${key}</strong>${allObjections[key]}`; 
                     objectionsList.appendChild(div);
                 }
             }
         }
+
 
         // 6. Note-Taking Tool (`exportNotes` button)
         exportNotesButton.addEventListener('click', () => {
