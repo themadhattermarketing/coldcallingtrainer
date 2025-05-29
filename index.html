@@ -202,11 +202,27 @@
             </div>
         </section>
 
-        <!-- Objection Handler Widget (Initially Hidden) -->
-        <div id="objection-widget" style="display: none;">
-            <button id="toggle-objections">Objections</button>
-            <div id="objections-list">
-                <!-- Objections will be listed here -->
+        <!-- Floating Objection Button -->
+        <button id="floating-objection-btn" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1000; width: 60px; height: 60px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center;" class="icon-only">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" style="width: 32px; height: 32px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+        </button>
+
+        <!-- Objection Modal -->
+        <div id="objection-modal" class="modal hidden" style="display: none;">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <button id="close-objection-modal" class="icon-only" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; font-size: 1.8em; padding: 5px; width: auto; height: auto; box-shadow: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" style="width: 28px; height: 28px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                <h2>Objection Handler</h2>
+                <input type="text" id="objection-search" placeholder="Search objections..." style="width: calc(100% - 20px); margin-bottom: 15px; padding: 10px; border-radius: 5px; border: 1px solid #00ffff; background-color: #2c2c54; color: #e0e0e0; font-family: inherit;">
+                <div id="objections-list" style="max-height: 300px; overflow-y: auto; text-align: left; background-color: transparent; padding:0; margin-top:0;">
+                    <!-- Objections will be listed here by JS -->
+                </div>
             </div>
         </div>
 
@@ -790,16 +806,16 @@
         const scriptDisplay = document.getElementById('script-display');
         const prospectResponses = document.getElementById('prospect-responses');
 
-        // const toggleObjections = document.getElementById('toggle-objections'); // Old button, removed
-        const objectionsList = document.getElementById('objections-list'); // Now inside modal
-        // const objectionWidget = document.getElementById('objection-widget');  // Old container, removed
+        // const toggleObjections = document.getElementById('toggle-objections'); 
+        const objectionsList = document.getElementById('objections-list'); // This is now inside the modal
+        // const objectionWidget = document.getElementById('objection-widget'); 
 
         // New DOM Elements for Objection Modal
-        const floatingObjectionBtn = document.getElementById('floating-objection-btn');
-        const objectionModal = document.getElementById('objection-modal');
-        const closeModalBtn = document.getElementById('close-objection-modal'); 
-        const objectionSearchInput = document.getElementById('objection-search'); 
-        const modalBackdrop = document.querySelector('#objection-modal .modal-backdrop');
+        const floatingObjectionBtn = document.getElementById('floating-objection-btn'); // ID confirmed
+        const objectionModal = document.getElementById('objection-modal'); // ID confirmed
+        const closeModalBtn = document.getElementById('close-objection-modal');  // ID confirmed
+        const objectionSearchInput = document.getElementById('objection-search'); // ID confirmed
+        const modalBackdrop = document.querySelector('#objection-modal .modal-backdrop'); // Selector confirmed
 
 
         const toggleNotes = document.getElementById('toggle-notes');
@@ -822,11 +838,14 @@
             callInterface.classList.remove('section-visible');
             
             floatingObjectionBtn.style.display = 'none'; 
-            objectionModal.classList.add('hidden'); 
-            objectionModal.style.display = 'none'; 
+            if (floatingObjectionBtn) floatingObjectionBtn.style.display = 'none'; 
+            if (objectionModal) {
+                objectionModal.classList.add('hidden'); 
+                objectionModal.style.display = 'none'; 
+            }
 
-            noteTool.style.display = 'none';      
-            meetLinkArea.style.display = 'none';
+            if (noteTool) noteTool.style.display = 'none';      
+            if (meetLinkArea) meetLinkArea.style.display = 'none';
             // Clear content
             if(animationTimeoutId) clearTimeout(animationTimeoutId);
             scriptDisplay.innerHTML = '';
@@ -850,10 +869,10 @@
             callInterface.classList.remove('section-hidden');
             callInterface.classList.add('section-visible');
             
-            floatingObjectionBtn.style.display = 'flex'; // Changed to flex to help center icon if needed
+            if (floatingObjectionBtn) floatingObjectionBtn.style.display = 'flex'; // Changed to flex to help center icon if needed
             
-            noteTool.style.display = 'block'; 
-            const noteToolChildren = Array.from(noteTool.children);
+            if (noteTool) noteTool.style.display = 'block'; 
+            const noteToolChildren = noteTool ? Array.from(noteTool.children) : [];
             noteToolChildren.forEach(child => {
                 if (child.id !== 'toggle-notes') { 
                     child.style.display = 'none';
@@ -993,23 +1012,30 @@
 
         // 5. Widget Toggling Logic 
         // Objection Modal Toggling
-        floatingObjectionBtn.addEventListener('click', () => {
-            objectionModal.classList.remove('hidden');
-            objectionModal.style.display = 'flex'; 
+        if (floatingObjectionBtn) floatingObjectionBtn.addEventListener('click', () => {
+            if (objectionModal) {
+                objectionModal.classList.remove('hidden');
+                objectionModal.style.display = 'flex'; 
+            }
         });
 
-        closeModalBtn.addEventListener('click', () => { 
-            objectionModal.classList.add('hidden');
-            objectionModal.style.display = 'none';
+        if (closeModalBtn) closeModalBtn.addEventListener('click', () => { 
+            if (objectionModal) {
+                objectionModal.classList.add('hidden');
+                objectionModal.style.display = 'none';
+            }
         });
 
-        modalBackdrop.addEventListener('click', () => { 
-            objectionModal.classList.add('hidden');
-            objectionModal.style.display = 'none';
+        if (modalBackdrop) modalBackdrop.addEventListener('click', () => { 
+            if (objectionModal) {
+                objectionModal.classList.add('hidden');
+                objectionModal.style.display = 'none';
+            }
         });
 
         // Note Toggling (remains largely the same)
-        toggleNotes.addEventListener('click', () => {
+        if (toggleNotes) toggleNotes.addEventListener('click', () => {
+            if (!noteTool) return;
             const noteToolChildren = Array.from(noteTool.children);
             let allCurrentlyHidden = true;
             noteToolChildren.forEach(child => {
@@ -1031,7 +1057,8 @@
 
 
         // New: Objection Search/Filter Functionality
-        objectionSearchInput.addEventListener('input', () => { 
+        if (objectionSearchInput) objectionSearchInput.addEventListener('input', () => { 
+            if (!objectionsList) return;
             const searchTerm = objectionSearchInput.value.toLowerCase(); 
             const items = objectionsList.getElementsByTagName('div'); 
 
@@ -1048,6 +1075,7 @@
         // 5. Populate Objection Handler (`populateObjectionsWidget()`)
         // This function now populates the list inside the modal.
         function populateObjectionsWidget() {
+            if (!objectionsList) return; // Guard clause
             objectionsList.innerHTML = ''; 
             for (const key in allObjections) {
                 if (allObjections.hasOwnProperty(key)) {
@@ -1061,7 +1089,7 @@
 
 
         // 6. Note-Taking Tool (`exportNotes` button)
-        exportNotesButton.addEventListener('click', () => {
+        if (exportNotesButton) exportNotesButton.addEventListener('click', () => {
             const notes = `Prospect Name: ${prospectNameInput.value}\nPain Points: ${painPointsInput.value}\nObjections Raised: ${objectionsRaisedInput.value}\nOutcome: ${outcomeInput.value}`;
             navigator.clipboard.writeText(notes).then(() => {
                 alert('Notes copied to clipboard!');
