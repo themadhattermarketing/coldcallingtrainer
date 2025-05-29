@@ -593,7 +593,7 @@
                     "bookedNoTime_TestCallOffer": { // Optional step if they seem hesitant before full demo
                         text: "Before we schedule the full demo, would you like to experience a quick test call from the AI, just to see how natural it sounds? I can send one to your phone right now.",
                         responses: {
-                            "yes_send_test_call": { buttonText: "Yes, send test call", nextNodeKey: "bookedNoTime_TestCall_Triggered", action: "triggerAICall"},
+                            "yes_send_test_call": { buttonText: "Yes, send test call", nextNodeKey: "bookedNoTime_TestCall_Triggered", action: "triggerAICall"}, // <<< COMMA ADDED HERE
                             "no_proceed_to_demo": { buttonText: "No, let's just do the demo", nextNodeKey: "bookedNoTime_Close_BookActualDemo"}
                         }
                     },
