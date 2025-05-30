@@ -287,7 +287,16 @@
                             "dm_intrigued_tell_me_more": { buttonText: "Okay, 60 seconds. Tell me more.", nextNodeKey: "coldCall_DM_ValuePropPain" },
                             "dm_what_is_this_exactly": { buttonText: "What is this exactly? AI?", nextNodeKey: "coldCall_DM_ExplainAI" },
                             "dm_im_busy_now": { buttonText: "I'm busy right now.", nextNodeKey: "coldCall_DM_HandleBusy_New" },
-                            "dm_not_interested_initial": { buttonText: "Not interested.", nextNodeKey: "coldCall_DM_HandleNotInterested_Initial" }
+                            "dm_not_interested_initial": { buttonText: "Not interested.", nextNodeKey: "coldCall_DM_HandleNotInterested_Initial" },
+                            "dm_asks_cost_early": { buttonText: "What's the catch? How much?", nextNodeKey: "coldCall_DM_HandleCost_Early" },
+                            "dm_skeptical_about_ai_initial": { buttonText: "Another AI thing? Not a fan.", nextNodeKey: "coldCall_DM_AddressInitialAISkepticism" }
+                        }
+                    },
+                    "coldCall_DM_AddressInitialAISkepticism": {
+                        text: "I hear you, Dr. [Last Name] – there's a lot of 'AI hype' out there. What sets RapidMedical apart is that it's designed specifically for practices like yours, and patients actually find it incredibly efficient and easy to interact with. It's less about 'tech' and more about solving real phone frustrations. Would you be open to a 30-second explanation of how it's different?",
+                        responses: {
+                            "dm_ok_30_sec_ai_diff": { buttonText: "Okay, 30 secs on 'different'.", nextNodeKey: "coldCall_DM_ExplainAI" }, 
+                            "dm_still_not_fan_of_ai": { buttonText: "No, really not into AI solutions.", nextNodeKey: "coldCall_DM_HandleNotInterested_AIConcern" }
                         }
                     },
                     "coldCall_DM_ValuePropPain": {
@@ -295,7 +304,23 @@
                         responses: {
                             "dm_answers_missed_calls_low": { buttonText: "Answers (Low / Not many)", nextNodeKey: "coldCall_DM_ValuePropPain_Low" },
                             "dm_answers_missed_calls_high": { buttonText: "Answers (Significant / A lot)", nextNodeKey: "coldCall_DM_ValuePropPain_High" },
-                            "dm_skeptical_doesnt_miss_many": { buttonText: "Skeptical / We don't miss many", nextNodeKey: "coldCall_DM_AddressSkepticism_MissedCalls" }
+                            "dm_skeptical_doesnt_miss_many": { buttonText: "Skeptical / We don't miss many", nextNodeKey: "coldCall_DM_AddressSkepticism_MissedCalls" },
+                            "dm_asks_how_different_live_service": { buttonText: "How's it better than a live answering service?", nextNodeKey: "coldCall_DM_CompareToLiveService" },
+                            "dm_concerned_setup_complexity": { buttonText: "Sounds complicated to set up.", nextNodeKey: "coldCall_DM_AddressSetupConcern" }
+                        }
+                    },
+                    "coldCall_DM_CompareToLiveService": {
+                        text: "Great question! Live services are good, but our AI offers more: it books appointments directly into your EMR 24/7, not just takes messages. It handles patient intake, sends custom reminders, and re-books no-shows instantly – all at a fraction of the cost and with perfect consistency. Could I show you that booking capability in a quick demo?",
+                        responses: {
+                            "dm_show_booking_demo": { buttonText: "Show me the booking part.", nextNodeKey: "coldCall_DM_DemoCTA_New_Urgency" }, 
+                            "dm_still_prefers_live_service": { buttonText: "We prefer our live service.", nextNodeKey: "coldCall_DM_AcknowledgeCurrentSystem" } 
+                        }
+                    },
+                    "coldCall_DM_AddressSetupConcern": {
+                        text: "That's a common thought, but we've made it surprisingly simple – typically it's just a few clicks to integrate with major EMRs, and our team handles the setup. You could be up and running much faster than you think, often within a day or two. The goal is zero headache for you. Does knowing that ease your concern enough to see a quick 10-minute demo of the benefits?",
+                        responses: {
+                            "dm_yes_demo_if_easy_setup": { buttonText: "Okay, demo if setup is easy.", nextNodeKey: "coldCall_DM_DemoCTA_New" },
+                            "dm_still_worried_about_setup": { buttonText: "Still sounds like a hassle.", nextNodeKey: "coldCall_DM_HandleSendInfo_New" } 
                         }
                     },
                     "coldCall_DM_ValuePropPain_Low": {
@@ -429,7 +454,23 @@
                         responses: {
                             "dm_books_slot_1": { buttonText: "[Time 1] works.", nextNodeKey: "coldCall_End_Booked_Demo_DM" },
                             "dm_books_slot_2": { buttonText: "[Time 2] works.", nextNodeKey: "coldCall_End_Booked_Demo_DM" },
-                            "dm_propose_alt_time_or_now": { buttonText: "Neither work / Can you do now?", nextNodeKey: "coldCall_DM_HandleAltTime_Or_DemoNow" }
+                            "dm_propose_alt_time_or_now": { buttonText: "Neither work / Can you do now?", nextNodeKey: "coldCall_DM_HandleAltTime_Or_DemoNow" },
+                            "dm_needs_to_think": { buttonText: "I need to think about it / talk to [Partner/Manager].", nextNodeKey: "coldCall_DM_HandleThinkAboutIt" },
+                            "dm_asks_for_info_again": { buttonText: "Can you just send me that info you mentioned first?", nextNodeKey: "coldCall_DM_ReiterateSendInfo_BeforeDemo" }
+                        }
+                    },
+                    "coldCall_DM_HandleThinkAboutIt": {
+                        text: "Totally understand wanting to give it thought, Dr. [Last Name]. What specifically would you like to think over? Often a quick 10-minute look answers most questions and shows if it's even worth more thought. If you see it, you'll know right away if it's a fit. Can we do that [Time 1] or [Time 2] and then you'll have all the facts?",
+                        responses: {
+                            "dm_agrees_to_demo_to_help_think": { buttonText: "Okay, quick demo then I'll think.", nextNodeKey: "coldCall_End_Booked_Demo_DM" }, 
+                            "dm_insists_on_thinking_first": { buttonText: "No, I really need to think first.", nextNodeKey: "coldCall_End_FollowUp_DM_Think" }
+                        }
+                    },
+                    "coldCall_DM_ReiterateSendInfo_BeforeDemo": {
+                        text: "Of course, Dr. [Last Name]. I can send that info. The demo itself is super short – just 10 minutes – and it really brings the benefits to life far better than any email can. How about we lock in a tentative time for that demo, say [Time 1], and I'll send the info right now? If you cancel after reading, no problem at all.",
+                        responses: {
+                            "dm_agrees_tentative_demo_with_info": { buttonText: "Okay, tentative demo & send info.", nextNodeKey: "coldCall_End_Booked_Demo_DM_Tentative" }, 
+                            "dm_just_info_no_demo_commitment": { buttonText: "Just the info for now, please.", nextNodeKey: "coldCall_End_SendInfo_DM_Generic" }
                         }
                     },
                     "coldCall_DM_DemoCTA_New_Urgency": { // Slightly more urgent version
@@ -504,8 +545,10 @@
                     // --- End Nodes ---
                     "coldCall_End_Booked_Demo_DM": { text: "Excellent, Dr. [Last Name]! Demo booked for [Time 1 / Time 2]. You'll get a calendar invite from RapidMedical with the Google Meet link. Looking forward to showing you this!", action: "endCall_Booked" },
                     "coldCall_End_Booked_Demo_DM_AltTime": { text: "Perfect! Demo confirmed for [Agreed Alternative Time]. Calendar invite with the Google Meet link is on its way from RapidMedical. Talk soon!", action: "endCall_Booked" },
+                    "coldCall_End_Booked_Demo_DM_Tentative": { text: "Great. I've penciled you in for [Time 1] and the information is on its way. Looking forward to it, or let me know if anything changes. Thanks!", action: "endCall_Booked" },
                     "coldCall_End_FollowUp_GK_Time": { text: "Great, [Gatekeeper Name], I'll call back at [Agreed Time]. Appreciate your help!", action: "endCall_FollowUp" },
                     "coldCall_End_FollowUp_DM_Time": { text: "Sounds good, Dr. [Last Name]. I'll call you back at [Agreed Time]. Have a great day.", action: "endCall_FollowUp" },
+                    "coldCall_End_FollowUp_DM_Think": { text: "Understood, Dr. [Last Name]. I'll send a summary and a link to a quick video. When would be a good time next week for a brief follow-up call after you've had a chance to review?", action: "endCall_FollowUp" },
                     "coldCall_End_SendInfo_GK_WithAITaste": { text: "Will do, [Gatekeeper Name]. I'll send that one-pager and a link so Dr. [Last Name] can hear the AI. I'll follow up if I don't hear back. Thanks!", action: "endCall_FollowUp" },
                     "coldCall_End_SendInfo_DM_WithChallenge": { text: "Got it. I'll email you the info on how we address [Challenge e.g., missed calls], including the AI test link. Expect it shortly from [Your Name] at RapidMedical.", action: "endCall_FollowUp" },
                     "coldCall_End_SendInfo_DM_Generic": { text: "Okay, Dr. [Last Name], I'll send that general overview and the AI test link from RapidMedical. Keep an eye out for an email from [Your Name].", action: "endCall_FollowUp" },
